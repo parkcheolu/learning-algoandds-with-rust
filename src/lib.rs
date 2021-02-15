@@ -1,6 +1,8 @@
 mod algo;
+mod rand;
+#[allow(unused_imports)]
 use algo::*;
-//use algo::sort::bubble_sort;
+use rand::*;
 
 #[cfg(test)]
 mod tests {
@@ -34,5 +36,5 @@ mod tests {
         let mut v = vec![7, 4, 11, 34, 2, 6, 78, 1];
         quick_sort(&mut v);
         assert_eq!(v, [1, 2, 4, 6, 7, 11, 34, 78]);
-    }    
+    }
 }

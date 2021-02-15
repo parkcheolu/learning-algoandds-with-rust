@@ -1,7 +1,10 @@
 use std::fmt::Debug;
 
+use crate::rand;
+
 
 // O(n^2)
+#[allow(dead_code)]
 pub fn bubble_sort<T: PartialOrd + Debug>(v: &mut [T]) {
     for p in 0..v.len() {
         println!("{:?}", v);
@@ -26,6 +29,7 @@ pub fn bubble_sort<T: PartialOrd + Debug>(v: &mut [T]) {
     }
 }
 
+#[allow(dead_code)]
 pub fn merge_sort<T: PartialOrd + Debug>(mut v: Vec<T>) -> Vec<T> {
     println!("{:?}", v);
     if v.len() <= 1 {
@@ -83,8 +87,11 @@ pub fn merge_sort<T: PartialOrd + Debug>(mut v: Vec<T>) -> Vec<T> {
     }
 }
 
-/// 중간 값을 가운데로 위치시키고 그 위치를 반환한다.
+#[allow(dead_code)]
 pub fn pivot<T: PartialOrd>(v: &mut [T]) -> usize {
+    // let mut p = rand::rand(v.len());
+    // v.swap(p, 0);
+    // p = 0;
     let mut p = 0;
     for i in 1..v.len() {
         if v[i] < v[p] {
@@ -92,15 +99,17 @@ pub fn pivot<T: PartialOrd>(v: &mut [T]) -> usize {
             v.swap(p, p + 1);
             p += 1;
         }
-    }
+    }    
     p
 }
 
+#[allow(dead_code)]
 pub fn quick_sort<T: PartialOrd + Debug>(v: &mut [T]) {
     if v.len() <= 1 {
         return;
     }
     let p = pivot(v);
+    println!("pivot={}", p);
     println!("{:?}", v);
 
     let (a, b) = v.split_at_mut(p);
