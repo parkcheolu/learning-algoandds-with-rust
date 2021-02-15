@@ -37,4 +37,11 @@ mod tests {
         quick_sort(&mut v);
         assert_eq!(v, [1, 2, 4, 6, 7, 11, 34, 78]);
     }
+
+    #[test]
+    fn test_threaded_quick_sort() {
+        let mut v = vec![7, 4, 11, 34, 2, 6, 78, 1];
+        threaded_quick_sort(&mut v);
+        assert_eq!(v, [1, 2, 4, 6, 7, 11, 34, 78]);
+    }    
 }

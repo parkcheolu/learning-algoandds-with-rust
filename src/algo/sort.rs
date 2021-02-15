@@ -87,12 +87,13 @@ pub fn merge_sort<T: PartialOrd + Debug>(mut v: Vec<T>) -> Vec<T> {
     }
 }
 
+/// 피봇값을 고르고, 피봇값보다 작은 값은 왼쪽으로, 큰 값은 오른쪽으로 위치를 이동시키고,
+/// 피봇값 위치를 반환한다.
 #[allow(dead_code)]
 pub fn pivot<T: PartialOrd>(v: &mut [T]) -> usize {
-    // let mut p = rand::rand(v.len());
-    // v.swap(p, 0);
-    // p = 0;
-    let mut p = 0;
+    let mut p = rand::rand_val(v.len());
+    v.swap(p, 0);
+    p = 0;
     for i in 1..v.len() {
         if v[i] < v[p] {
             v.swap(p + 1, i);
@@ -103,6 +104,7 @@ pub fn pivot<T: PartialOrd>(v: &mut [T]) -> usize {
     p
 }
 
+/// 피봇값 위치를 기준으로 둘로 쪼개고, 쪼개진 둘에 대해 같은 연산을 반복한다.
 #[allow(dead_code)]
 pub fn quick_sort<T: PartialOrd + Debug>(v: &mut [T]) {
     if v.len() <= 1 {
@@ -115,4 +117,55 @@ pub fn quick_sort<T: PartialOrd + Debug>(v: &mut [T]) {
     let (a, b) = v.split_at_mut(p);
     quick_sort(a);
     quick_sort(&mut b[1..]);
+}
+
+/// Send trait을 unsafe로 구현하기 위한 struct.
+#[allow(dead_code)]
+struct RawSend<T>(*mut [T]);
+
+/// unsafe Send 구현.
+unsafe impl<T> Send for RawSend<T> {}
+
+#[allow(dead_code)]
+pub fn threaded_quick_sort<T: 'static + PartialOrd + Debug>(v: &mut [T]) {
+    if v.len() <= 1 {
+        return;
+    }
+    let p = pivot(v);
+    println!("pivot={}", p);
+    println!("{:?}", v);
+
+    let (a, b) = v.split_at_mut(p);
+
+    // raw pointer 생성.
+    let raw_a: *mut [T] = a as *mut [T];
+    // 클로저에 넘겨지는 변수의 Send trait 구현 요건을 만족시키기 위해 RawSend로 wrapping.
+    let raw_s = RawSend(raw_a);
+
+    unsafe {
+        let handle = std::thread::spawn(move || {
+            // raw pointer 역참조.
+            threaded_quick_sort(&mut *raw_s.0);
+        });
+
+        threaded_quick_sort(&mut b[1..]);
+        
+        handle.join().ok();
+    }
+}
+
+/// rayon의 work-stealing을 활용한다.
+#[allow(dead_code)]
+pub fn quick_sort_rayon<T: PartialOrd + Debug + Send>(v: &mut [T]) {
+    if v.len() <= 1 {
+        return;
+    }
+    let p = pivot(v);
+    println!("pivot={}", p);
+    println!("{:?}", v);
+
+    let (a, b) = v.split_at_mut(p);
+    // 두 번째 함수를 큐에 넣고 첫 번째 함수를 실행한다.
+    // 다른 쓰레드가 준비가 되면 두 번째 함수를 실행한다(work-stealing).
+    rayon::join(|| quick_sort_rayon(a), || quick_sort_rayon(&mut b[1..]));
 }

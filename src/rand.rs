@@ -4,7 +4,7 @@ lazy_static::lazy_static! {
     static ref RG: Mutex<RandGen> = Mutex::new(RandGen::new(34052));
 }
 
-pub fn rand(max: usize) -> usize {
+pub fn rand_val(max: usize) -> usize {
     RG.lock().unwrap().next_val(max)
 }
 
