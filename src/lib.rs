@@ -6,6 +6,7 @@ mod ds;
 use algo::*;
 #[allow(unused_imports)]
 use rand::*;
+#[warn(unused_imports)]
 use ds::ll::*;
 
 

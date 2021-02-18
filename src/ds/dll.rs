@@ -1,5 +1,7 @@
 use std::cell::RefCell;
 use std::rc::{Rc, Weak};
+use std::convert::TryInto;
+use std::ops::Deref;
 
 #[derive(Debug)]
 pub struct DbNode<T> {
@@ -72,12 +74,36 @@ impl<T> DbList<T> {
         }
     }
 
-    pub fn pop(&mut self) -> Option<T> {
+    pub fn pop_front(&mut self) -> Option<T> {
         match self.first.take() {
-            Some(f) => {
-                match Rc::try_unwrap(f) {
-                    Ok(rc) => Some(rc.into_inner().data),
-                    Err(_) => None
+            Some(first) => {
+                match Rc::try_unwrap(first) {
+                    Ok(refc) => {
+                        let inner = refc.into_inner();
+                        self.first = inner.next;
+                        if let None = self.first {
+                            self.last = None;
+                        };
+                        Some(inner.data)
+                    },
+                    Err(_) => None,
+                }
+            },
+            None => None,
+        }
+    }
+
+    pub fn pop_back(&mut self) -> Option<T> {
+        match self.last.take() {
+            Some(last) => {
+                // todo: try_unwrap 에러: last의 prev의 next가 본체다.  
+                match Rc::try_unwrap(Weak::upgrade(&last).unwrap()) {
+                    Ok(refc) => {
+                        let inner = refc.into_inner();
+                        self.last = inner.prev;
+                        Some(inner.data)
+                    },
+                    Err(_) => None,
                 }
             },
             None => None,
@@ -88,9 +114,11 @@ impl<T> DbList<T> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::borrow::Borrow;
 
     #[test]
-    fn test_push_front() {
+    #[warn(unused_assignments)]
+    fn test_pushs() {
         let mut dll = DbList::new();
         dll.push_front(1);
         dll.push_front(2);
@@ -98,8 +126,64 @@ mod tests {
         dll.push_back(4);
         dll.push_front(1);
 
-        let front_val = dll.pop().unwrap();
+        let mut front_val = dll.pop_front().unwrap();
+        front_val = dll.pop_front().unwrap();
+        front_val = dll.pop_front().unwrap();
+        front_val = dll.pop_front().unwrap();
+        front_val = dll.pop_front().unwrap();
         println!("{:?}", front_val);
         println!("{:?}", dll);
+
+        match Weak::upgrade(&dll.last.unwrap()) {
+            Some(lastrc) => {
+                println!("{:?}", lastrc);
+            },
+            None => {
+                println!("last is none");
+            }
+        }
+    }
+
+    #[test]
+    fn test_eq_first_last() {
+        let mut dll = DbList::new();
+        dll.push_back(1);
+        dll.push_back(2);
+        dll.push_back(3);
+        dll.pop_front();
+        dll.pop_front();
+        if let Some(ref first) = dll.first {
+            if let Some(ref last) = dll.last {
+                let firstdta = (&**first).borrow().data;
+                let lastdta = (&*Weak::upgrade(last).unwrap()).borrow().data;
+                assert_eq!(firstdta, lastdta);
+            }
+        };
+    }
+
+    #[test]
+    fn test_pop_front() {
+        let mut dll = DbList::new();
+        dll.push_back(1);
+        dll.push_back(2);
+        dll.pop_front();
+        dll.pop_front();
+        println!("after poping all data: {:?}", dll);
+        dll.push_front(1);
+        println!("after push_front: {:?}", dll);
+    }
+
+    #[test]
+    fn test_pop_back() {
+        let mut dll = DbList::new();
+        dll.push_back(1);
+        dll.push_back(2);
+        let back = dll.pop_back().unwrap();
+        assert_eq!(2, back);
+        let back = dll.pop_back().unwrap();
+        assert_eq!(1, back);
+        println!("after poping back all data: {:?}", dll);
+        dll.push_front(1);
+        println!("after push_front: {:?}", dll);
     }
 }
