@@ -96,7 +96,7 @@ impl<T> DbList<T> {
     pub fn pop_back(&mut self) -> Option<T> {
         match self.last.take() {
             Some(last) => {
-                // todo: try_unwrap 에러: last의 prev의 next가 본체다.  
+                // todo: try_unwrap 에러: last의 prev의 next가 본체다.
                 match Rc::try_unwrap(Weak::upgrade(&last).unwrap()) {
                     Ok(refc) => {
                         let inner = refc.into_inner();
