@@ -1,7 +1,10 @@
 use std::cell::RefCell;
 use std::rc::{Rc, Weak};
-use std::convert::TryInto;
-use std::ops::Deref;
+// 참고:
+// 아래 import는 Rc<RefCell<T>>로 하여금 자신의 Borrow::borrow() 를 호출하게끔 한다. 
+// 이 borrow는 self를 반환하기에 코드가 깨진다. rc.borrow() 는 auto-deref를 통해 RefCell::borrow()
+// 를 호출해야 한다. 
+//use std::borrow::Borrow;
 
 #[derive(Debug)]
 pub struct DbNode<T> {
@@ -92,19 +95,54 @@ impl<T> DbList<T> {
             None => None,
         }
     }
+/*
+    pub fn pop_back_i(&mut self) -> Option<T> {
+        let nlast: Weak<RefCell<DbNode<T>>>;
+        match self.last.as_ref() {
+            Some(last) => {
+                let lastrc = Weak::upgrade(last).unwrap();
+                match lastrc.borrow_mut().prev.as_ref() {
+                    // 이전 값이 있다. last로의 모든 레퍼런스를 끊고, second-to-last를 last로
+                    // 세팅하고, return data.
+                    Some(lastrcp) => {
+                        
+                        nlast =  Rc::downgrade(&Rc::clone(&Weak::upgrade(lastrcp).unwrap()));
+                        drop(last);
+                        self.last = Some(nlast);
+                    },
+                    // 이전 값이 없다, 즉 마지막 값이니 try:unwrap하여 return data.
+                    None => {
 
+                    },
+                }
+                unimplemented!()
+            },
+            None => {
+                unimplemented!()
+            },
+        }
+    }
+*/
     pub fn pop_back(&mut self) -> Option<T> {
         match self.last.take() {
             Some(last) => {
-                // todo: try_unwrap 에러: last의 prev의 next가 본체다.
-                match Rc::try_unwrap(Weak::upgrade(&last).unwrap()) {
-                    Ok(refc) => {
-                        let inner = refc.into_inner();
-                        self.last = inner.prev;
-                        Some(inner.data)
-                    },
-                    Err(_) => None,
+                // 기존 last의 strong reference 획득.
+                let last = Weak::upgrade(&last).unwrap();
+                // last와 first가 같은지 확인: 같다면 마지막 노드임을 의미한다.
+                if Rc::ptr_eq(self.first.as_ref().unwrap(), &last) {
+                    self.first = None;
+                } else {
+                    // 기존 last의 prev(the second-to-last)를 Rc로 획득.
+                    let prev = Weak::upgrade(last.borrow().prev.as_ref().unwrap());
+                    // 기존 second-to-last의 next(기존 last 자리)에 None을 세팅하여, old last reference 제거.
+                    prev.as_ref().unwrap().borrow_mut().next = None;
+                    // 기존 second-to-last를 새로운 last로 세팅.
+                    self.last = Some(Rc::downgrade(prev.as_ref().unwrap()));                  
                 }
+                match Rc::try_unwrap(last) {
+                    Ok(iv) => Some(iv.into_inner().data),
+                    Err(_) => None,
+                }                  
             },
             None => None,
         }
@@ -114,7 +152,6 @@ impl<T> DbList<T> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::borrow::Borrow;
 
     #[test]
     #[warn(unused_assignments)]
